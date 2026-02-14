@@ -184,6 +184,7 @@ async function handleEndOfCall(message: Record<string, unknown>) {
   } else {
     await supabase.from('calls').insert({
       vapi_call_id: vapiCallId,
+      direction: 'inbound',
       transcript,
       duration_seconds: durationSeconds,
       summary: insights.summary,

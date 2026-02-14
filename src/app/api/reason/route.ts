@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
       
       if (lead) {
         context.current_lead_data = {
-          intent: { value: lead.lead_type, confidence: lead.intent_score / 10, uncertainty_markers: [] },
-          budget: { value: lead.budget_range, confidence: 0.5, uncertainty_markers: [] },
-          urgency: { value: 'medium', confidence: lead.urgency_score / 10, uncertainty_markers: [] },
+          intent: { value: lead.status === 'qualified' ? 'buy' : 'unknown', confidence: lead.readiness_score / 100, uncertainty_markers: [] },
+          budget: { value: lead.budget, confidence: 0.5, uncertainty_markers: [] },
+          urgency: { value: lead.urgency || 'medium', confidence: 0.5, uncertainty_markers: [] },
           location: { value: lead.location, confidence: 0.5, uncertainty_markers: [] },
           timeline: { value: lead.timeline, confidence: 0.5, uncertainty_markers: [] },
           motivation: { value: lead.motivation, confidence: 0.5, uncertainty_markers: [] },
-          lead_type: { value: lead.lead_type, confidence: 0.8, uncertainty_markers: [] },
+          lead_type: { value: lead.lead_type || 'buyer', confidence: 0.8, uncertainty_markers: [] },
         };
       }
     }
@@ -70,29 +70,33 @@ export async function POST(request: NextRequest) {
 
     // Update or create lead based on extracted data
     let updatedLeadId = lead_id;
-    if (result.extracted.intent.confidence > 0.3) {
-      const leadUpdate: Record<string, unknown> = {
+    if (result.extracted.intent.confidence > 0.1) {
+      const leadUpdate: any = {
         lead_type: typeof result.extracted.lead_type.value === 'string' ? result.extracted.lead_type.value : 'buyer',
         intent_score: Math.round(result.extracted.intent.confidence * 10),
         urgency_score: Math.round(result.extracted.urgency.confidence * 10),
         readiness_score: result.readiness_score,
         next_action: result.next_action,
         status: getStatusFromStrategy(result.strategy),
+        last_contact_at: new Date().toISOString(),
       };
 
-      if (result.extracted.budget.value) leadUpdate.budget_range = result.extracted.budget.value;
+      if (result.extracted.budget.value) leadUpdate.budget = result.extracted.budget.value;
       if (result.extracted.location.value) leadUpdate.location = result.extracted.location.value;
       if (result.extracted.timeline.value) leadUpdate.timeline = result.extracted.timeline.value;
       if (result.extracted.motivation.value) leadUpdate.motivation = result.extracted.motivation.value;
+      if (result.extracted.urgency.value) leadUpdate.urgency = result.extracted.urgency.value;
 
       if (lead_id) {
-        await supabase.from('leads').update(leadUpdate).eq('id', lead_id);
+        const { error: updateError } = await supabase.from('leads').update(leadUpdate).eq('id', lead_id);
+        if (updateError) console.error('Error updating lead:', updateError);
       } else {
-        const { data: newLead } = await supabase
+        const { data: newLead, error: insertError } = await supabase
           .from('leads')
           .insert({ ...leadUpdate, name: 'New Lead' })
           .select()
           .single();
+        if (insertError) console.error('Error creating lead:', insertError);
         if (newLead) updatedLeadId = newLead.id;
       }
     }

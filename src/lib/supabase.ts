@@ -12,16 +12,19 @@ export interface Lead {
   name: string | null;
   phone: string | null;
   email: string | null;
-  lead_type: 'buyer' | 'seller' | 'investor' | 'renter';
-  status: 'new' | 'contacted' | 'qualified' | 'appointment_set' | 'closed';
-  intent_score: number;
-  urgency_score: number;
-  budget_range: string | null;
+  lead_type: 'buyer' | 'seller' | 'investor' | 'renter' | string;
+  status: string;
+  budget: string | null;
   location: string | null;
+  urgency: string | null;
   timeline: string | null;
   motivation: string | null;
+  intent_score: number;
+  urgency_score: number;
   readiness_score: number;
   next_action: string | null;
+  last_contact_at?: string;
+  manager_summary?: string;
   created_at: string;
   updated_at: string;
 }
